@@ -39,15 +39,30 @@ To run this analysis yourself, follow these steps:
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/M1hawk005/Anime-StackViz.git 
+
     cd Anime-StackViz
     ```
 
-2.  **Create and activate a virtual environment.** If you are using `pyenv-venv`:
+2.  **Create and activate a virtual environment.** 
+    
+    - If you are using `pyenv-venv`:
     ```bash
     pyenv virtualenv 3.13.5 anime-stack-venv
+
+    #activate env
     pyenv-venv activate anime-stackviz-venv
     ```
+    - If you are using `venv`
+    ```bash
+    python -m venv  .venv
+    
+    #activate env
+    # On Windows
+    .\.venv\Scripts\activate
+
+    # On MacOS/Linux
+    source .venv/bin/activate
 
 3.  **Install the required dependencies:**
     ```bash
@@ -67,6 +82,7 @@ The data used in this analysis is from the official Stack Exchange Data Dump for
 ## Technologies Used
 
 *   Python 3.13
+*   pyenv/venv
 *   Pandas & Numpy
 *   Matplotlib & Seaborn
 *   pyenv-win and pyenv-venv
