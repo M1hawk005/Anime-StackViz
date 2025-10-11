@@ -32,6 +32,9 @@ anime-stack-analysis/
 ├── README.md
 └── requirements.txt
 ```
+## Data Source
+
+The data used in this analysis is from the official Stack Exchange Data Dump for the [Anime & Manga](https://anime.stackexchange.com/) site, available on the [Internet Archive](https://archive.org/details/stackexchange).
 
 ## Setup and Installation
 
@@ -68,16 +71,17 @@ To run this analysis yourself, follow these steps:
     ```bash
     pip install -r requirements.txt
     ```
+4. **Download and Prepare Data**
+    - Download: Download the latest Anima & Manga Stack Exchange data dump archive (e.g. a .7z file) from the official Stack Exchange Data Dump
+    - Extract: Unzip the downloaded archive. Move the raw XML filesw (e.g. Posts.xml, Users.xml) into the data/raw/. directory.
 
-4.  **Launch Jupyter Notebook:**
+5.  **Launch Jupyter Notebook:**
     ```bash
     jupyter notebook
     ```
     Then, navigate to `notebooks/Anime StackViz.ipynb` and run the cells.
 
-## Data Source
 
-The data used in this analysis is from the official Stack Exchange Data Dump for the [Anime & Manga](https://anime.stackexchange.com/) site, available on the [Internet Archive](https://archive.org/details/stackexchange).
 
 ## Technologies Used
 
