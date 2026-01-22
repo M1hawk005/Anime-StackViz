@@ -12,26 +12,6 @@ This project performs an in-depth analysis of the Anime & Manga Stack Exchange d
 *   **Content Trends:** Analysis of tag usage to understand which genres and topics are most popular.
 *   **User Engagement:** Examination of reputation distribution and voting patterns to gauge user involvement.
 
-## Project Structure
-
-```
-anime-stack-analysis/
-├── .gitignore
-├── data/
-│   ├── raw/
-│   │   ├── Posts.xml
-│   │   └── ... (other .xml files)
-│   └── processed/
-│       ├── Posts.csv
-│       └── ... (other .csv files)
-├── images/
-│   ├── most_discussed_anime.png
-│   └── ... (other saved plots)
-├── notebooks/
-│   └── Anime StackViz.ipynb
-├── README.md
-└── requirements.txt
-```
 ## Data Source
 
 The data used in this analysis is from the official Stack Exchange Data Dump for the [Anime & Manga](https://anime.stackexchange.com/) site, available on the [Internet Archive](https://archive.org/details/stackexchange).
@@ -90,4 +70,5 @@ To run this analysis yourself, follow these steps:
 *   Pandas & Numpy
 *   Matplotlib & Seaborn
 *   pyenv-win and pyenv-venv
+
 *   Jupyter Notebook
