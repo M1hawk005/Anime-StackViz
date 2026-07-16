@@ -1,0 +1,10 @@
+{
+  "source": "Stack Exchange Data Dump — Anime & Manga",
+  "source_url": "https://archive.org/details/stackexchange",
+  "archive": "anime.stackexchange.com.7z",
+  "archive_sha256": "bfd37f2f4345f6cf8878b37cf62942c54abd14b494917892af98fd6f9a3c6d38",
+  "archive_bytes": 38285884,
+  "observed_post_start_utc": "2012-12-11T20:37:08.823",
+  "observed_post_end_utc": "2024-03-31T17:25:35.323",
+  "notes": "Raw records are excluded from Git. Recompute the generated processed-data manifest with the prepare command."
+}
