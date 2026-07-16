@@ -48,6 +48,7 @@ venv.bak/
 # Cache files
 cache
 .cache/
+models/
 *.csv
 *.parquet
 
