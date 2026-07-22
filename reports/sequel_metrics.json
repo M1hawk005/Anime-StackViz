@@ -1,0 +1,92 @@
+{
+  "target": "Season-one TV anime spawns a sequel",
+  "split": "Oldest 80% by season_year / newest 20%",
+  "train_rows": 2651,
+  "test_rows": 663,
+  "train_end_year": 2021,
+  "test_start_year": 2021,
+  "prevalence_baseline": {
+    "roc_auc": 0.5,
+    "average_precision": 0.26395173453996984,
+    "brier_score": 0.19474781469734678,
+    "log_loss": 0.5783115864706047,
+    "confusion_matrix": [
+      [
+        488,
+        0
+      ],
+      [
+        175,
+        0
+      ]
+    ],
+    "precision_at_0_5": 0.0,
+    "recall_at_0_5": 0.0,
+    "f1_at_0_5": 0.0,
+    "positive_rate": 0.26395173453996984,
+    "n": 663
+  },
+  "reception_only_logreg": {
+    "roc_auc": 0.7087822014051522,
+    "average_precision": 0.5251523909369243,
+    "brier_score": 0.17414046709490155,
+    "log_loss": 0.5292919734690341,
+    "confusion_matrix": [
+      [
+        463,
+        25
+      ],
+      [
+        131,
+        44
+      ]
+    ],
+    "precision_at_0_5": 0.6376811594202898,
+    "recall_at_0_5": 0.25142857142857145,
+    "f1_at_0_5": 0.36065573770491804,
+    "positive_rate": 0.26395173453996984,
+    "n": 663
+  },
+  "full_logreg": {
+    "roc_auc": 0.7117564402810302,
+    "average_precision": 0.504597891089651,
+    "brier_score": 0.1726310304964258,
+    "log_loss": 0.5271015924688732,
+    "confusion_matrix": [
+      [
+        460,
+        28
+      ],
+      [
+        130,
+        45
+      ]
+    ],
+    "precision_at_0_5": 0.6164383561643836,
+    "recall_at_0_5": 0.2571428571428571,
+    "f1_at_0_5": 0.3629032258064516,
+    "positive_rate": 0.26395173453996984,
+    "n": 663
+  },
+  "full_gradient_boosting": {
+    "roc_auc": 0.6679449648711945,
+    "average_precision": 0.4520710339459375,
+    "brier_score": 0.20496283983011332,
+    "log_loss": 0.7723855061126872,
+    "confusion_matrix": [
+      [
+        465,
+        23
+      ],
+      [
+        145,
+        30
+      ]
+    ],
+    "precision_at_0_5": 0.5660377358490566,
+    "recall_at_0_5": 0.17142857142857143,
+    "f1_at_0_5": 0.2631578947368421,
+    "positive_rate": 0.26395173453996984,
+    "n": 663
+  }
+}
