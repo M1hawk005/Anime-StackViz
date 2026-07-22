@@ -1,4 +1,14 @@
-"""Command-line interface for the end-to-end project."""
+"""Command-line interface for the offline batch pipeline.
+
+Each subcommand is an independently runnable, idempotent stage:
+
+    anime-stackviz ingest  --source anilist   # fetch -> raw cache + manifest
+    anime-stackviz process                    # raw -> DuckDB/Parquet warehouse
+    anime-stackviz train   --product sequel   # warehouse -> model metrics
+    anime-stackviz publish                     # warehouse -> read-only serving artifact
+
+The legacy Stack Exchange study (``prepare`` / ``analyse``) is retained for provenance.
+"""
 
 from __future__ import annotations
 
@@ -6,52 +16,108 @@ import argparse
 import json
 from pathlib import Path
 
-from .data import load_posts, prepare_raw_data
-from .features import build_question_dataset
-from .model import train_and_evaluate
-from .report import create_model_evaluation, create_overview
+from .config import Settings
 
 
-def run_analysis(data_dir: Path, report_dir: Path) -> dict[str, object]:
-    posts = load_posts(data_dir)
-    dataset = build_question_dataset(posts)
-    report_dir.mkdir(parents=True, exist_ok=True)
-    audit = {
-        "questions": len(dataset),
-        "start": dataset["CreationDate"].min().isoformat(),
-        "end": dataset["CreationDate"].max().isoformat(),
-        "answered_ever": int(dataset["first_answer_at"].notna().sum()),
-        "answered_within_24h": int(dataset["answered_within_24h"].sum()),
-        "response_rate_24h": float(dataset["answered_within_24h"].mean()),
-        "median_hours_to_first_answer": float(dataset["hours_to_first_answer"].median()),
-        "duplicate_question_ids": int(dataset["Id"].duplicated().sum()),
-    }
-    (report_dir / "data_audit.json").write_text(json.dumps(audit, indent=2), encoding="utf-8")
-    pipeline, metrics, _, test, probabilities = train_and_evaluate(dataset, report_dir)
-    del pipeline
-    figures = report_dir / "figures"
-    create_overview(dataset, figures / "portfolio_overview.png")
-    create_model_evaluation(test, probabilities, report_dir / "metrics.json", figures / "model_evaluation.png")
-    return {"audit": audit, "metrics": metrics}
+def _settings(args: argparse.Namespace) -> Settings:
+    return Settings(data_dir=args.data_dir, report_dir=args.report_dir)
+
+
+def _cmd_ingest(args: argparse.Namespace) -> object:
+    from .ingestion.anilist import AniListSource
+    from .ingestion.jikan import JikanSource
+    from .storage import LocalStorage
+
+    settings = _settings(args)
+    settings.ensure_dirs()
+    sources = {"anilist": AniListSource, "jikan": JikanSource}
+    source = sources[args.source].from_settings(settings, max_pages=args.max_pages)
+    return source.ingest(LocalStorage(settings.raw_dir), resume=not args.no_resume)
+
+
+def _cmd_process(args: argparse.Namespace) -> object:
+    from .processing import build_warehouse
+    from .storage import LocalStorage
+
+    settings = _settings(args)
+    written = build_warehouse(settings, LocalStorage(settings.raw_dir))
+    return {"tables": sorted(written)}
+
+
+def _cmd_train(args: argparse.Namespace) -> object:
+    from .models import build_sequel_dataset, train_and_evaluate
+    from .processing import connect
+
+    settings = _settings(args)
+    connection = connect(settings, read_only=True)
+    try:
+        dataset = build_sequel_dataset(connection)
+    finally:
+        connection.close()
+    return train_and_evaluate(dataset, settings.report_dir)
+
+
+def _cmd_publish(args: argparse.Namespace) -> object:
+    from .processing.serving import build_serving_artifact
+
+    return build_serving_artifact(_settings(args))
+
+
+def _cmd_prepare(args: argparse.Namespace) -> object:
+    from .data import prepare_raw_data
+
+    return prepare_raw_data(args.data_dir)
+
+
+def _cmd_analyse(args: argparse.Namespace) -> object:
+    from .legacy import run_analysis
+
+    return run_analysis(args.data_dir, args.report_dir)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Anime StackViz reproducible pipeline")
+    parser = argparse.ArgumentParser(description="Anime intelligence platform pipeline")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for name in ("prepare", "analyse", "all"):
-        command = subparsers.add_parser(name)
-        command.add_argument("--data-dir", type=Path, default=Path("data"))
-        command.add_argument("--report-dir", type=Path, default=Path("reports"))
+
+    def add_common(sub: argparse.ArgumentParser) -> None:
+        sub.add_argument("--data-dir", type=Path, default=Path("data"))
+        sub.add_argument("--report-dir", type=Path, default=Path("reports"))
+
+    ingest = subparsers.add_parser("ingest", help="fetch a source into the raw cache")
+    add_common(ingest)
+    ingest.add_argument("--source", choices=["anilist", "jikan"], required=True)
+    ingest.add_argument("--max-pages", type=int, default=None)
+    ingest.add_argument("--no-resume", action="store_true")
+    ingest.set_defaults(func=_cmd_ingest)
+
+    process = subparsers.add_parser("process", help="build the warehouse from raw data")
+    add_common(process)
+    process.set_defaults(func=_cmd_process)
+
+    train = subparsers.add_parser("train", help="train and evaluate a product model")
+    add_common(train)
+    train.add_argument("--product", choices=["sequel"], default="sequel")
+    train.set_defaults(func=_cmd_train)
+
+    publish = subparsers.add_parser("publish", help="materialize the read-only serving artifact")
+    add_common(publish)
+    publish.set_defaults(func=_cmd_publish)
+
+    prepare = subparsers.add_parser("prepare", help="[legacy] stream Stack Exchange XML to CSV")
+    add_common(prepare)
+    prepare.set_defaults(func=_cmd_prepare)
+
+    analyse = subparsers.add_parser("analyse", help="[legacy] run the Stack Exchange study")
+    add_common(analyse)
+    analyse.set_defaults(func=_cmd_analyse)
+
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.command in {"prepare", "all"}:
-        prepare_raw_data(args.data_dir)
-    if args.command in {"analyse", "all"}:
-        results = run_analysis(args.data_dir, args.report_dir)
-        print(json.dumps(results, indent=2))
+    result = args.func(args)
+    print(json.dumps(result, indent=2, default=str))
 
 
 if __name__ == "__main__":
