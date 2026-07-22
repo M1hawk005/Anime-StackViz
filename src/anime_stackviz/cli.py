@@ -7,7 +7,7 @@ Each subcommand is an independently runnable, idempotent stage:
     anime-stackviz train   --product sequel   # warehouse -> model metrics
     anime-stackviz publish                     # warehouse -> read-only serving artifact
 
-The legacy Stack Exchange study (``prepare`` / ``analyse``) is retained for provenance.
+``prepare`` converts a Stack Exchange XML dump to CSV to feed the buzz signal.
 """
 
 from __future__ import annotations
@@ -69,12 +69,6 @@ def _cmd_prepare(args: argparse.Namespace) -> object:
     return prepare_raw_data(args.data_dir)
 
 
-def _cmd_analyse(args: argparse.Namespace) -> object:
-    from .legacy import run_analysis
-
-    return run_analysis(args.data_dir, args.report_dir)
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Anime intelligence platform pipeline")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -103,13 +97,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(publish)
     publish.set_defaults(func=_cmd_publish)
 
-    prepare = subparsers.add_parser("prepare", help="[legacy] stream Stack Exchange XML to CSV")
+    prepare = subparsers.add_parser("prepare", help="convert a Stack Exchange XML dump to CSV (buzz)")
     add_common(prepare)
     prepare.set_defaults(func=_cmd_prepare)
-
-    analyse = subparsers.add_parser("analyse", help="[legacy] run the Stack Exchange study")
-    add_common(analyse)
-    analyse.set_defaults(func=_cmd_analyse)
 
     return parser
 

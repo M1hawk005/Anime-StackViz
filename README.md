@@ -7,9 +7,9 @@ DuckDB/Parquet warehouse and turns it into three products - **sequel prediction*
 a **hidden-gems finder**, and **community-buzz lifecycles** - served through a
 stateless FastAPI backend and a static React front end.
 
-It began as a university Stack Exchange study (still included, and now repurposed as
-the buzz signal) and grew into an end-to-end platform designed to be
-**platform-agnostic** and to **scale with both data and users**.
+The Anime & Manga Stack Exchange dump is repurposed as the community-buzz signal. The
+whole system is designed to be **platform-agnostic** and to **scale with both data and
+users**.
 
 ```
 OFFLINE (batch)                                        ONLINE (serves users)
@@ -134,19 +134,6 @@ titles, 28% sequel rate; chronological split with the test set from 2021 onward)
   do not align perfectly, so buzz-to-title linkage is approximate. All findings are
   associational, not causal.
 
-## Legacy Stack Exchange study
-
-The platform's origin was a leakage-aware study predicting whether an Anime & Manga
-Stack Exchange question is answered within 24 hours (chronological validation, honest
-baselines). It is preserved and runnable:
-
-```bash
-anime-stackviz prepare --data-dir data   # stream Posts.xml -> CSV
-anime-stackviz analyse --data-dir data    # cohort + model + figures
-```
-
-The original notebook remains in [`notebooks/`](notebooks/) for provenance.
-
 ## Repository layout
 
 ```text
@@ -158,8 +145,8 @@ src/anime_stackviz/
   models/              # sequel predictor + shared evaluation
   analytics/           # hidden gems + buzz lifecycle
   api/                 # stateless FastAPI serving app
-  data.py, features.py, model.py, report.py, legacy.py   # Stack Exchange study
-  cli.py               # ingest / process / train / publish (+ legacy prepare/analyse)
+  data.py, features.py # Stack Exchange ingest + text utilities (buzz signal)
+  cli.py               # ingest / process / train / publish / prepare
 web/                     # Vite + React + TypeScript SPA
 Dockerfile               # serving image
 ARCHITECTURE.md          # design + scaling path

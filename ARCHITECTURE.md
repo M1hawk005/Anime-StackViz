@@ -78,7 +78,7 @@ loaded into a DuckDB file:
 
 DuckDB is the query engine for every product and for the dashboard.
 
-### 4. Products (`features/`, `models/`, `analytics/`)
+### 4. Products (`models/`, `analytics/`)
 
 - **Sequel predictor** - binary classification: will a title get a continuation?
   Ground-truth labels come from AniList relation edges; features use only what is
