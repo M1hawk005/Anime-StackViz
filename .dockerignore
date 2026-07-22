@@ -1,0 +1,15 @@
+.git
+.venv
+.ruff_cache
+.pytest_cache
+.cache
+__pycache__
+*.pyc
+tests
+notebooks
+images
+# Keep only the serving artifact from data/, not the raw cache or warehouse.
+data/raw
+data/processed
+data/warehouse
+web/node_modules

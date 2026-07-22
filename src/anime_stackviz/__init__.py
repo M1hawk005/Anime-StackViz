@@ -1,3 +1,3 @@
-"""Anime StackViz: reproducible analysis of Anime & Manga Stack Exchange."""
+"""Anime StackViz: a multi-source anime intelligence platform."""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
