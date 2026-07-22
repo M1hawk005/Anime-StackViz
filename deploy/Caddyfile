@@ -1,0 +1,18 @@
+# Auto-HTTPS reverse proxy. Caddy obtains and renews Let's Encrypt certs for both
+# domains automatically (ports 80/443 must be reachable and DNS must point here).
+
+{$APP_DOMAIN} {
+	# Static single-page app; unknown paths fall back to index.html for client routing.
+	root * /srv/web
+	encode gzip zstd
+	try_files {path} /index.html
+	file_server
+}
+
+{$API_DOMAIN} {
+	# Docker DNS resolves "api" to every replica; Caddy load-balances across them.
+	reverse_proxy api:8000 {
+		lb_policy round_robin
+		health_uri /health
+	}
+}
