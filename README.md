@@ -1,163 +1,170 @@
 # Anime StackViz
 
-### Predicting whether an Anime & Manga Stack Exchange question will receive an answer within 24 hours
+### An anime intelligence platform: multi-source ingestion, a DuckDB warehouse, and three analytic products behind a scalable API.
 
-![Community responsiveness overview](reports/figures/portfolio_overview.png)
+Anime StackViz ingests anime data from several public sources into a reproducible
+DuckDB/Parquet warehouse and turns it into three products — **sequel prediction**,
+a **hidden-gems finder**, and **community-buzz lifecycles** — served through a
+stateless FastAPI backend and a static React front end.
 
-Anime StackViz is an end-to-end data-science study of community responsiveness on Anime & Manga
-Stack Exchange. It began as a university exploratory-analysis assignment and was rebuilt as a
-reproducible portfolio project with a testable research question, leakage-aware feature engineering,
-chronological validation, interpretable modelling, automated tests, and a documented data lineage.
+It began as a university Stack Exchange study (still included, and now repurposed as
+the buzz signal) and grew into an end-to-end platform designed to be
+**platform-agnostic** and to **scale with both data and users**.
 
-## Headline findings
+```
+OFFLINE (batch)                                              ONLINE (serves users)
+AniList ┐                                                    ┌ stateless FastAPI (N replicas)
+Jikan   ┼─▶ ingest ─▶ DuckDB/Parquet ─▶ train ─▶ publish ─▶ │  read-only artifact + caching
+StackEx ┘   (cache +   warehouse        models   read-only  └ static React SPA on a CDN
+             manifest)                            artifact
+```
 
-The study contains **12,373 eligible questions** posted between December 2012 and March 2024.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design, including the scaling
+path (what would change if any single dimension grew, and what is deliberately not
+built at this data scale).
 
-| Finding | Result |
-|---|---:|
-| Questions receiving an answer within 24 hours | **57.4%** |
-| Median time to first answer among answered questions | **8.23 hours** |
-| 24-hour response rate, 2013 | **65.9%** |
-| 24-hour response rate, 2023 | **35.1%** |
-| Full-model ROC AUC on the newest 20% of questions | **0.617** |
-| Full-model average precision | **0.522** |
-| Test-set positive prevalence | **0.431** |
+## The three products
 
-The central descriptive finding is a long-term decline in both question volume and rapid-response
-rate. The predictive result is intentionally modest: question content and tag identity improve
-ranking performance over a metadata-only model (ROC AUC **0.563 → 0.617**), but they do not remove
-the temporal drift between the early and later community. This is evidence that changes in community
-capacity matter beyond the wording of an individual question; it is an association, not a causal claim.
+**1. Will a first season get a sequel?**
+A gradient-boosting / logistic benchmark predicts whether a season-one TV anime
+spawns a continuation. Labels come from AniList relation edges; the population is
+season-one titles only (no prequel). Predictions served to users are **out-of-fold**,
+so a title is scored by a model that never trained on it — no in-sample leakage.
 
-![Chronological model evaluation](reports/figures/model_evaluation.png)
+**2. Hidden gems.**
+Titles ranked by how far their *quality* percentile exceeds their *popularity*
+percentile, blending AniList and MyAnimeList scores. On the ingested catalogue this
+surfaces titles like *ARIA The Natural*, *Gundam 0080*, and *Honey & Clover II* —
+acclaimed but comparatively niche.
 
-## Research design
+**3. Buzz lifecycle.**
+The Anime & Manga Stack Exchange dump becomes a discussion time-series: questions per
+franchise per month. It shows, for example, Naruto dominating community discussion
+(peaking December 2012) and Attack on Titan cresting with its final season.
 
-### Target
+## Data sources
 
-`answered_within_24h = 1` when at least one answer was posted during the 24 hours after a question's
-creation. Questions posted less than 24 hours before the dump's final timestamp are excluded.
+| Source | Role | Auth |
+|---|---|---|
+| [AniList](https://anilist.co) (GraphQL) | Backbone: scores, popularity, studios, source, airing, **relation edges → sequel labels** | none |
+| [Jikan](https://jikan.moe) (MyAnimeList) | Second opinion: MAL score, members, favorites | none |
+| [Stack Exchange](https://archive.org/details/stackexchange) dump | Community buzz signal | none |
 
-The target is **not** “accepted within 24 hours.” The dump records which answer was ultimately
-accepted, but not the time at which acceptance occurred. Using first-answer timestamps avoids
-inventing an unobservable outcome.
+Each source implements one `Source` interface (rate limiting, retry/backoff,
+response caching, provenance manifest). Adding a fourth source changes nothing
+downstream.
 
-### Features available at question time
+## Quickstart
 
-- TF–IDF features from the title and body
-- Tag identity and tag count
-- Title and body length
-- Question-mark, code-block, and link counts
-- Cyclical hour-of-day and weekday features
-- Posting year
-
-Final score, view count, answer count, accepted-answer ID, and current user reputation are excluded
-because they are measured after the question is created or are otherwise vulnerable to leakage.
-
-### Evaluation
-
-The oldest 80% of questions train the model and the newest 20% form a untouched chronological test
-set. This is more realistic than a random split and exposes genuine distribution shift:
-
-- Training period ends: **25 February 2019**
-- Test period: **26 February 2019 – 27 March 2024**
-- Training response rate: **60.9%**
-- Test response rate: **43.1%**
-
-Three benchmarks are reported:
-
-| Model | ROC AUC | Average precision | Brier score |
-|---|---:|---:|---:|
-| Prevalence baseline | 0.500 | 0.431 | 0.277 |
-| Metadata logistic regression | 0.563 | 0.480 | 0.246 |
-| Text + tags + metadata logistic regression | **0.617** | **0.522** | **0.245** |
-
-The model is useful for studying relative response likelihood, not for automated moderation or
-high-stakes decisions. Calibration degrades at the extremes, so raw probabilities should not be
-treated as operational forecasts without recalibration on newer data.
-
-## Reproducibility
-
-Python 3.11 or newer is required.
+Python 3.11+ and Node 20+.
 
 ```bash
-git clone https://github.com/M1hawk005/Anime-StackViz.git
-cd Anime-StackViz
-
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-
-python -m pip install -e ".[dev]"
+# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
+pip install -e ".[dev,api]"
 ```
 
-Download the Anime & Manga archive from the
-[Stack Exchange Data Dump](https://archive.org/details/stackexchange), extract the XML files into
-`data/raw/`, and run:
+Run the batch pipeline (each stage is idempotent and independently runnable):
 
 ```bash
-# Stream raw XML files to CSV and generate a checksum manifest
-anime-stackviz prepare --data-dir data
-
-# Build the question cohort, train/evaluate models, and render the report
-anime-stackviz analyse --data-dir data --report-dir reports
+anime-stackviz ingest  --source anilist --max-pages 40   # fetch → raw cache + manifest
+anime-stackviz ingest  --source jikan   --max-pages 40   # optional MAL enrichment
+anime-stackviz process                                    # raw → DuckDB/Parquet warehouse
+anime-stackviz train   --product sequel                   # warehouse → metrics
+anime-stackviz publish                                    # warehouse → read-only serving artifact
 ```
 
-If processed CSV files already exist, only the `analyse` command is needed. Generated row-level
-predictions remain ignored by Git; aggregate audit files, metrics, and figures are versioned.
+Serve it:
 
-## Repository layout
-
-```text
-.
-├── data/                       # raw/processed data (ignored) and data documentation
-├── notebooks/                  # original assignment retained as a legacy artifact
-├── reports/
-│   ├── data_audit.json         # cohort and data-quality facts
-│   ├── metrics.json            # chronological model evaluation
-│   ├── top_features.json       # largest model coefficients
-│   └── figures/                # publication-ready charts
-├── src/anime_stackviz/
-│   ├── data.py                 # streaming XML conversion and loading
-│   ├── features.py             # target construction and leakage-safe features
-│   ├── model.py                # baselines, modelling, and evaluation
-│   ├── report.py               # visual reporting
-│   └── cli.py                  # end-to-end command line interface
-├── tests/                      # synthetic unit tests; no dump required
-├── pyproject.toml              # minimal runtime and development dependencies
-└── .github/workflows/ci.yml    # lint and test automation
+```bash
+uvicorn anime_stackviz.api.app:app --port 8000            # online API over the artifact
+cd web && npm install && npm run dev                      # React SPA (VITE_API_BASE defaults to :8000)
 ```
 
-## Verification
+## Docker
+
+The serving image bakes the read-only artifact in and runs the stateless API;
+scale it by running more replicas behind a load balancer.
+
+```bash
+anime-stackviz process && anime-stackviz publish          # produce data/serving/
+docker build -t anime-stackviz .
+docker run -p 8000:8000 anime-stackviz
+```
+
+## Development
 
 ```bash
 ruff check src tests
 pytest
 ```
 
-The test suite checks tag parsing, HTML cleaning, first-answer target construction, the 24-hour
-boundary, and exclusion of incomplete observation windows. CI runs the same checks on every push and
-pull request.
+The suite (offline, no network or dump required) covers the ingestion engine and
+resumable caching, source normalization, the DuckDB warehouse, sequel labels and
+the model benchmark, the hidden-gems and buzz analytics, the serving artifact, and
+the API endpoints. CI runs the Python suite and the web build on every push.
 
-## Limitations
+> On Windows, if the machine's `%TEMP%` is locked down, run
+> `pytest --basetemp=<writable-dir>`.
 
-- The dump ends in March 2024; 2012 and 2024 are partial years and are omitted from annual comparisons.
-- Deleted posts are absent from the public dump, which may introduce survivorship bias.
-- All timestamps are interpreted as UTC; no claims are made about users' local daily routines.
-- The analysis observes association, not the causal effect of writing style or tag choice.
-- Tags and language evolve, creating distribution shift that a static vocabulary cannot fully absorb.
-- The model uses no user-profile variables to reduce leakage and privacy risk.
-- A single community may not generalize to other Stack Exchange sites.
+## Results and honesty
 
-## Ethics and attribution
+On a full-catalogue crawl (14,636 titles across 1963–2026; 3,314 season-one TV
+titles, 28% sequel rate; chronological split with the test set from 2021 onward):
 
-Only aggregate results are presented. The rebuilt report intentionally removes user leaderboards and
-free-text location inference from the original assignment because they add privacy risk without
-strengthening the research question. See [`data/README.md`](data/README.md) for source, storage, and
-attribution guidance.
+| Model | ROC AUC | Avg precision |
+|---|---:|---:|
+| Prevalence baseline | 0.500 | 0.264 |
+| Reception-only logistic regression | 0.709 | 0.525 |
+| Full logistic regression | **0.712** | 0.505 |
+| Gradient boosting | 0.668 | 0.452 |
 
-## Original assignment
+- **Sequel prediction is moderately predictive (AUC ≈ 0.71),** but the honest finding
+  is that a *reception-only* baseline (score + popularity) is essentially as strong as
+  the full model — reach and reception carry the signal, and the heavier gradient
+  boosting model actually does worse. This is reported, not hidden.
+- Popularity is the dominant positive driver; controlling for it, high *favourites*
+  is mildly negative (cult titles that never continue).
+- Serving predictions are out-of-fold; the evaluation uses a chronological split so
+  the test set is strictly later than training.
+- **Limitations:** the AniList crawl shards by season year, so titles without a season
+  (some films/OVAs) are outside the modelled population. Deleted posts are absent from
+  the Stack Exchange dump (survivorship bias). Buzz tags (franchises) and content tags
+  do not align perfectly, so buzz-to-title linkage is approximate. All findings are
+  associational, not causal.
 
-The original notebook is preserved in [`notebooks/Anime StackViz.ipynb`](notebooks/Anime%20StackViz.ipynb)
-for provenance. It is labelled as a legacy artifact because several early exploratory claims were
-superseded by the tested pipeline in `src/anime_stackviz/`.
+## Legacy Stack Exchange study
+
+The platform's origin was a leakage-aware study predicting whether an Anime & Manga
+Stack Exchange question is answered within 24 hours (chronological validation, honest
+baselines). It is preserved and runnable:
+
+```bash
+anime-stackviz prepare --data-dir data   # stream Posts.xml → CSV
+anime-stackviz analyse --data-dir data    # cohort + model + figures
+```
+
+The original notebook remains in [`notebooks/`](notebooks/) for provenance.
+
+## Repository layout
+
+```text
+src/anime_stackviz/
+├── config.py            # env-driven, portable settings
+├── storage/             # Storage interface (local ↔ object store)
+├── ingestion/           # Source engine + AniList / Jikan connectors
+├── processing/          # normalize → DuckDB/Parquet warehouse → serving artifact
+├── models/              # sequel predictor + shared evaluation
+├── analytics/           # hidden gems + buzz lifecycle
+├── api/                 # stateless FastAPI serving app
+├── data.py / features.py / model.py / report.py / legacy.py   # Stack Exchange study
+└── cli.py               # ingest / process / train / publish (+ legacy prepare/analyse)
+web/                     # Vite + React + TypeScript SPA
+Dockerfile               # serving image
+ARCHITECTURE.md          # design + scaling path
+```
+
+## Tech stack
+
+Python · pandas · scikit-learn · DuckDB · PyArrow · requests · FastAPI ·
+React · TypeScript · Vite · Docker · GitHub Actions
