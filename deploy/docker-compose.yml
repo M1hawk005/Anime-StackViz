@@ -1,0 +1,36 @@
+# VPS deployment: stateless API container + Caddy reverse proxy (auto-HTTPS)
+# serving the static SPA. Bring up with:
+#   APP_DOMAIN=app.example.com API_DOMAIN=api.example.com docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: anime-stackviz:latest
+    restart: unless-stopped
+    expose:
+      - "8000"
+    # The image is stateless (read-only serving artifact baked in), so it scales
+    # horizontally:  docker compose -f deploy/docker-compose.yml up -d --scale api=3
+    # Caddy load-balances across replicas via the upstream defined in the Caddyfile.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../web/dist:/srv/web:ro       # static SPA build (run `npm run build` first)
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
